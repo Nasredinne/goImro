@@ -1,0 +1,14 @@
+docker run --name goImro -e POSTGRES_PASSWORD=goImro -e POSTGRES_USER=postgres -e POSTGRES_DB=postgres -p 5432:5432  -d postgres
+
+
+
+// CreateUser
+{
+
+"fullname" : "",
+"number" : "",
+"email" : "",
+"password" : "",
+"goldcard" : ""
+
+}
