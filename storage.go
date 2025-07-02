@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"os"
 
 	_ "github.com/lib/pq"
 )
@@ -22,19 +23,19 @@ type PostgresStore struct {
 }
 
 func NewPostgresStore() (*PostgresStore, error) {
-	connStr := "host=127.0.0.1 port=5432 user=postgres dbname=postgres password=goImro sslmode=disable"
+	// connStr := "host=127.0.0.1 port=5432 user=postgres dbname=postgres password=goImro sslmode=disable"
 
-	db, err := sql.Open("postgres", connStr)
-	if err != nil {
-		return nil, err
-	}
+	// db, err := sql.Open("postgres", connStr)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	// DO THIS BEFORE PUSH
-	// dsn := os.Getenv("DB_HOST")
-	// db, err := sql.Open("postgres", dsn)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
+	dsn := os.Getenv("DB_HOST")
+	db, err := sql.Open("postgres", dsn)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	err = db.Ping()
 	if err != nil {
@@ -201,7 +202,7 @@ func (s *PostgresStore) GetEmployee() ([]*Employee, error) {
 // }
 
 func (s *PostgresStore) GetUserByID(id string) (*User, error) {
-	rows, err := s.db.Query("select * from user where id = $1", id)
+	rows, err := s.db.Query("select * from users where id = $1", id)
 	if err != nil {
 		return nil, err
 	}
