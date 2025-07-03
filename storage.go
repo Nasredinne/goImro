@@ -4,18 +4,24 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
-	"os"
 
 	_ "github.com/lib/pq"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type Storage interface {
 	CreateUsers(*User) error
 	GetUsers() ([]*User, error)
 	GetUserByID(id string) (*User, error)
+	GetUserByEmail(email string) (*User, error)
+	UserRegister(password string, email string) (*User, error)
 	CreateEmployee(*Employee) error
 	GetEmployee() ([]*Employee, error)
 	GetEmployeeByID(id string) (*Employee, error)
+	EmployeeRegister(password string, email string) (*Employee, error)
+	GetEmployeeByEmail(email string) (*Employee, error)
+	CreateBookSevice(*BookService) error
+	GetBookServices() ([]*BookService, error)
 }
 
 type PostgresStore struct {
@@ -23,19 +29,19 @@ type PostgresStore struct {
 }
 
 func NewPostgresStore() (*PostgresStore, error) {
-	// connStr := "host=127.0.0.1 port=5432 user=postgres dbname=postgres password=goImro sslmode=disable"
 
-	// db, err := sql.Open("postgres", connStr)
-	// if err != nil {
-	// 	return nil, err
-	// }
+	connStr := "host=127.0.0.1 port=5432 user=postgres dbname=postgres password=goImro sslmode=disable"
+	db, err := sql.Open("postgres", connStr)
+	if err != nil {
+		return nil, err
+	}
 
 	// DO THIS BEFORE PUSH
-	dsn := os.Getenv("DB_HOST")
-	db, err := sql.Open("postgres", dsn)
-	if err != nil {
-		log.Fatal(err)
-	}
+	// dsn := os.Getenv("DB_HOST")
+	// db, err := sql.Open("postgres", dsn)
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
 
 	err = db.Ping()
 	if err != nil {
@@ -60,6 +66,12 @@ func (s *PostgresStore) Init() error {
 		return err
 	}
 	if err := s.createEmployeeTable(); err != nil {
+		return err
+	}
+	if err := s.createEmployeeTable(); err != nil {
+		return err
+	}
+	if err := s.createBookServiceTable(); err != nil {
 		return err
 	}
 
@@ -113,6 +125,19 @@ func (s *PostgresStore) GetUsers() ([]*User, error) {
 	return Users, nil
 }
 
+func (s *PostgresStore) UserRegister(password string, email string) (*User, error) {
+	user, err := s.GetUserByEmail(email)
+	if err != nil {
+		return nil, err
+	}
+	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password))
+	if err != nil {
+		// Password mismatch
+		return nil, nil
+	}
+	return user, nil
+}
+
 // EMPLOYEE
 func (s *PostgresStore) createEmployeeTable() error {
 	query := `CREATE TABLE IF NOT EXISTS employee (
@@ -130,12 +155,12 @@ func (s *PostgresStore) createEmployeeTable() error {
 }
 
 func (s *PostgresStore) CreateEmployee(employee *Employee) error {
-	hashedpassword, err := s.CreateUser(employee.Email, employee.Password)
+	hashedpassword, err := s.CreateEmp(employee.Email, employee.Password)
 	if err != nil {
 		return err
 	} else {
 		query := `INSERT INTO employee (fullname, phone,  email, password, services, goldcard) 
-								VALUES ($1, $2, $3, $4, $5); `
+								VALUES ($1, $2, $3, $4, $5, $6); `
 
 		_, err := s.db.Query(query, employee.FullName, employee.Phone, employee.Email, hashedpassword, employee.Service, employee.GoldCard)
 
@@ -161,31 +186,18 @@ func (s *PostgresStore) GetEmployee() ([]*Employee, error) {
 	return Employee, nil
 }
 
-// func (s *PostgresStore) Register(password string, email string) (bool, error) {
-// 	var hashedPassword string
-
-// 	// Fetch the hashed password from the database
-// 	query := `SELECT password FROM worker WHERE email = $1`
-// 	err := s.db.QueryRow(query, email).Scan(&hashedPassword)
-// 	if err != nil {
-// 		if errors.Is(err, sql.ErrNoRows) {
-// 			// User not found
-// 			return false, nil
-// 		}
-// 		// Other DB error
-// 		return false, err
-// 	}
-
-// 	// Compare the plaintext password with the stored hash
-// 	err = bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
-// 	if err != nil {
-// 		// Password mismatch
-// 		return false, nil
-// 	}
-
-// 	// Password matches
-// 	return true, nil
-// }
+func (s *PostgresStore) EmployeeRegister(password string, email string) (*Employee, error) {
+	employee, err := s.GetEmployeeByEmail(email)
+	if err != nil {
+		return nil, err
+	}
+	err = bcrypt.CompareHashAndPassword([]byte(employee.Password), []byte(password))
+	if err != nil {
+		// Password mismatch
+		return nil, nil
+	}
+	return employee, nil
+}
 
 // func (s *PostgresStore) Register(password string, email string) (*Worker, error) {
 // 	worker, err := s.GetWorkerByEmail(email)
@@ -227,83 +239,31 @@ func (s *PostgresStore) GetEmployeeByID(id string) (*Employee, error) {
 	return nil, fmt.Errorf("account %s not found", id)
 }
 
-// func (s *PostgresStore) GetCommandByID(id string) (*Command, error) {
-// 	rows, err := s.db.Query("select * from commandsss where id = $1", id)
-// 	if err != nil {
-// 		return nil, err
-// 	}
+func (s *PostgresStore) GetUserByEmail(email string) (*User, error) {
+	rows, err := s.db.Query("select * from users where email = $1", email)
+	if err != nil {
+		return nil, err
+	}
 
-// 	for rows.Next() {
-// 		return scanIntoAccount(rows)
-// 	}
+	for rows.Next() {
+		return scanIntoUser(rows)
+	}
 
-// 	return nil, fmt.Errorf("command %s not found", id)
-// }
+	return nil, fmt.Errorf("Worker %s not found", email)
+}
 
-// func (s *PostgresStore) UpdateCommand(command *Command) error {
+func (s *PostgresStore) GetEmployeeByEmail(email string) (*Employee, error) {
+	rows, err := s.db.Query("select * from employee where email = $1", email)
+	if err != nil {
+		return nil, err
+	}
 
-// 	query := `
-// 		UPDATE commandsss
-// 		SET isaccepted = $1
-// 		WHERE id = $2
-// 	`
-// 	result, err := s.db.Exec(query, command.IsAccepted, command.ID)
-// 	if err != nil {
-// 		return fmt.Errorf("failed to execute update query: %w", err)
-// 	}
-// 	rowsAffected, err := result.RowsAffected()
-// 	if err != nil {
-// 		return fmt.Errorf("failed to retrieve affected rows: %w", err)
-// 	}
+	for rows.Next() {
+		return scanIntoEmployee(rows)
+	}
 
-// 	if rowsAffected == 0 {
-// 		return fmt.Errorf("no command found with ID %s", command.ID)
-// 	}
-
-// 	return nil
-// }
-
-// func (s *PostgresStore) UpdateWorker(worker *Worker) error {
-
-// 	query := `
-// 		UPDATE worker
-// 		SET isaccepted = $1
-// 		WHERE id = $2
-// 	`
-// 	result, err := s.db.Exec(query, worker.IsAccepted, worker.ID)
-// 	if err != nil {
-// 		return fmt.Errorf("failed to execute update query: %w", err)
-// 	}
-// 	rowsAffected, err := result.RowsAffected()
-// 	if err != nil {
-// 		return fmt.Errorf("failed to retrieve affected rows: %w", err)
-// 	}
-
-// 	if rowsAffected == 0 {
-// 		return fmt.Errorf("no worker found with ID %s", worker.ID)
-// 	}
-
-// 	return nil
-// }
-
-// func scanIntoAccount(rows *sql.Rows) (*Command, error) {
-// 	command := new(Command)
-// 	err := rows.Scan(
-// 		&command.ID,
-// 		&command.FullName,
-// 		&command.Number,
-// 		&command.Flor,
-// 		&command.Itemtype,
-// 		&command.Service,
-// 		&command.Workers,
-// 		&command.Start,
-// 		&command.Distination,
-// 		&command.IsAccepted,
-// 		&command.Prix,
-// 	)
-
-// 	return command, err
-// }
+	return nil, fmt.Errorf("Worker %s not found", email)
+}
 
 func scanIntoUser(rows *sql.Rows) (*User, error) {
 	user := new(User)
@@ -332,4 +292,71 @@ func scanIntoEmployee(rows *sql.Rows) (*Employee, error) {
 	)
 
 	return employee, err
+}
+
+func (s *PostgresStore) createBookServiceTable() error {
+	query := `CREATE TABLE IF NOT EXISTS book_service (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL,
+    employee_id UUID NOT NULL,
+    service VARCHAR(255) NOT NULL,
+    date VARCHAR(50) NOT NULL,
+    time VARCHAR(50) NOT NULL,
+    location VARCHAR(255) NOT NULL,
+    is_authorized BOOLEAN NOT NULL,
+    price VARCHAR(50) NOT NULL,
+
+    -- Foreign key constraints
+    CONSTRAINT fk_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+    CONSTRAINT fk_employee FOREIGN KEY (employee_id) REFERENCES employee (id) ON DELETE CASCADE
+);
+`
+
+	_, err := s.db.Exec(query)
+	return err
+}
+
+func (s *PostgresStore) CreateBookSevice(bookservice *BookService) error {
+	query := `INSERT INTO book_service (
+    user_id, employee_id, service, date, time, location, is_authorized, price
+) VALUES ( $1, $2, $3, $4, $5, $6, $7, $8 ); `
+
+	_, err := s.db.Query(query, bookservice.UserId, bookservice.EmployeeId, bookservice.Service, bookservice.Date, bookservice.Time, bookservice.Location, bookservice.IsAuthorized, bookservice.Price)
+
+	return err
+}
+
+func (s *PostgresStore) GetBookServices() ([]*BookService, error) {
+	rows, err := s.db.Query("select * from book_service")
+	if err != nil {
+		return nil, err
+	}
+
+	BookServices := []*BookService{}
+	for rows.Next() {
+		bookservice, err := scanIntoBookServices(rows)
+		if err != nil {
+			return nil, err
+		}
+		BookServices = append(BookServices, bookservice)
+	}
+
+	return BookServices, nil
+}
+
+func scanIntoBookServices(rows *sql.Rows) (*BookService, error) {
+	services := new(BookService)
+	err := rows.Scan(
+		&services.Id,
+		&services.UserId,
+		&services.EmployeeId,
+		&services.Service,
+		&services.Date,
+		&services.Time,
+		&services.Location,
+		&services.IsAuthorized,
+		&services.Price,
+	)
+
+	return services, err
 }

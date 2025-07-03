@@ -3,6 +3,8 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"time"
+
 	"log"
 	"net/http"
 
@@ -28,6 +30,11 @@ func (s *APIServer) Run() {
 	router.HandleFunc("/CreateEmployee", corsMiddleware(makeHTTPHandleFunc(s.handleCreateEmployee)))
 	router.HandleFunc("/GetUser", corsMiddleware(makeHTTPHandleFunc(s.handleGetUsers)))
 	router.HandleFunc("/GetEmployee", corsMiddleware(makeHTTPHandleFunc(s.handleGetEmployee)))
+	router.HandleFunc("/UserLogin", corsMiddleware(makeHTTPHandleFunc(s.handleUserRegestration)))
+	router.HandleFunc("/Employee", corsMiddleware(makeHTTPHandleFunc(s.handleEmployeeRegestration)))
+	router.HandleFunc("/CreateBookSevice", corsMiddleware(makeHTTPHandleFunc(s.handleCreateBookService)))
+	router.HandleFunc("/GetBookService", corsMiddleware(makeHTTPHandleFunc(s.handleGetBookService)))
+
 	log.Println("JSON API server running on port: ", s.listenAddr)
 
 	http.ListenAndServe(s.listenAddr, router)
@@ -82,30 +89,14 @@ func (s *APIServer) handleCreateUser(w http.ResponseWriter, r *http.Request) err
 }
 
 func (s *APIServer) handleGetUsers(w http.ResponseWriter, r *http.Request) error {
-	workers, err := s.store.GetUsers()
+	users, err := s.store.GetUsers()
 	if err != nil {
 		return err
 	}
 
 	enableCors(&w)
 
-	return WriteJSON(w, http.StatusOK, workers)
-}
-func (s *APIServer) handleGetUserByID(w http.ResponseWriter, r *http.Request) error {
-
-	fmt.Println("get to handleGetWorkerByID ")
-	id, err := getID(r)
-	if err != nil {
-		return err
-	}
-
-	account, err := s.store.GetUserByID(id)
-	if err != nil {
-		return err
-	}
-
-	return WriteJSON(w, http.StatusOK, account)
-
+	return WriteJSON(w, http.StatusOK, users)
 }
 
 // ------------ EMPLOYEE
@@ -120,82 +111,131 @@ func (s *APIServer) handleCreateEmployee(w http.ResponseWriter, r *http.Request)
 	err := s.store.CreateEmployee(
 		&Employee{
 			FullName: req.FullName,
+			Phone:    req.Phone,
 			Email:    req.Email,
 			Password: req.Password,
-			Phone:    req.Phone,
 			GoldCard: req.GoldCard,
+			Service:  req.Service,
 		})
 	return err
 }
 
 func (s *APIServer) handleGetEmployee(w http.ResponseWriter, r *http.Request) error {
-	workers, err := s.store.GetEmployee()
+	employees, err := s.store.GetEmployee()
 	if err != nil {
 		return err
 	}
 
 	enableCors(&w)
 
-	return WriteJSON(w, http.StatusOK, workers)
-}
-func (s *APIServer) handleGetEmployeeByID(w http.ResponseWriter, r *http.Request) error {
-
-	fmt.Println("get to handleGetWorkerByID ")
-	id, err := getID(r)
-	if err != nil {
-		return err
-	}
-
-	account, err := s.store.GetEmployeeByID(id)
-	if err != nil {
-		return err
-	}
-
-	return WriteJSON(w, http.StatusOK, account)
-
+	return WriteJSON(w, http.StatusOK, employees)
 }
 
 //-------------------------------
 
-// func (s *APIServer) handleRegestration(w http.ResponseWriter, r *http.Request) error {
-// 	enableCors(&w)
-// 	req := new(LoginRequest)
-// 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-// 		return err
-// 	}
+func (s *APIServer) handleUserRegestration(w http.ResponseWriter, r *http.Request) error {
+	enableCors(&w)
+	req := new(LoginRequest)
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		fmt.Println("Probleme in decoding")
+		return err
+	}
 
-// 	if req.Email == "Krixo" || req.Password == "Nasro1234" {
-// 		return WriteJSON(w, http.StatusOK, "Welcome Admin")
-// 	}
+	// worker, err := s.store.UserRegister(req.Password, req.Email)
+	user, err := s.store.UserRegister(req.Password, req.Email)
+	if err != nil {
+		WriteJSON(w, http.StatusNotAcceptable, err)
+		fmt.Println("PREBLEME FROM REGISTRATION ///////// WORKER :", user)
 
-// 	worker, err := s.store.Register(req.Password, req.Email)
-// 	if err != nil {
-// 		WriteJSON(w, http.StatusNotAcceptable, err)
-// 		fmt.Println("PREBLEME FROM REGISTRATION ///////// WORKER :", worker)
+	}
 
-// 	}
+	userjwt := jwtInupt{user.ID, user.Email}
 
-// 	token, err := createJWT(worker)
-// 	if err != nil {
-// 		return err
-// 	}
+	token, err := createJWT(&userjwt)
+	if err != nil {
+		return err
+	}
 
-// 	resp := LoginResponse{
-// 		Token: token,
-// 		ID:    worker.ID,
-// 	}
-// 	http.SetCookie(w, &http.Cookie{
-// 		Name:     "x-jwt-token",
-// 		Value:    token,
-// 		Expires:  time.Now().Add(24 * time.Hour),
-// 		HttpOnly: true, // Prevent JavaScript access
-// 		Secure:   true, // Only send over HTTPS
-// 		SameSite: http.SameSiteStrictMode,
-// 		Path:     "/",
-// 	})
+	http.SetCookie(w, &http.Cookie{
+		Name:     "x-jwt-token",
+		Value:    token,
+		Expires:  time.Now().Add(24 * time.Hour),
+		HttpOnly: true, // Prevent JavaScript access
+		Secure:   true, // Only send over HTTPS
+		SameSite: http.SameSiteStrictMode,
+		Path:     "/",
+	})
 
-// 	return WriteJSON(w, http.StatusOK, resp)
-// }
+	return WriteJSON(w, http.StatusOK, user)
+}
+
+func (s *APIServer) handleEmployeeRegestration(w http.ResponseWriter, r *http.Request) error {
+	enableCors(&w)
+	req := new(LoginRequest)
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		return err
+	}
+
+	// worker, err := s.store.UserRegister(req.Password, req.Email)
+	user, err := s.store.EmployeeRegister(req.Password, req.Email)
+	if err != nil {
+		WriteJSON(w, http.StatusNotAcceptable, err)
+		fmt.Println("PREBLEME FROM REGISTRATION ///////// WORKER :", user)
+
+	}
+
+	userjwt := jwtInupt{user.ID, user.Email}
+
+	token, err := createJWT(&userjwt)
+	if err != nil {
+		return err
+	}
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "x-jwt-token",
+		Value:    token,
+		Expires:  time.Now().Add(24 * time.Hour),
+		HttpOnly: true, // Prevent JavaScript access
+		Secure:   true, // Only send over HTTPS
+		SameSite: http.SameSiteStrictMode,
+		Path:     "/",
+	})
+
+	return WriteJSON(w, http.StatusOK, user)
+}
+
+func (s *APIServer) handleCreateBookService(w http.ResponseWriter, r *http.Request) error {
+	//decode json
+	req := new(BookServiceRequest)
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		return err
+	}
+
+	//get account
+	err := s.store.CreateBookSevice(
+		&BookService{
+			UserId:       req.UserId,
+			EmployeeId:   req.EmployeeId,
+			Service:      req.Service,
+			Date:         req.Date,
+			Time:         req.Time,
+			Location:     req.Location,
+			IsAuthorized: req.IsAuthorized,
+			Price:        req.Price,
+		})
+	return err
+}
+
+func (s *APIServer) handleGetBookService(w http.ResponseWriter, r *http.Request) error {
+
+	//calldb funtion
+	bookservices, err := s.store.GetBookServices()
+	if err != nil {
+		return err
+	}
+	//return
+	return WriteJSON(w, http.StatusAccepted, bookservices)
+}
 
 func WriteJSON(w http.ResponseWriter, status int, v any) error {
 	w.Header().Add("Content-Type", "application/json")

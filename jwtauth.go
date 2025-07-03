@@ -24,7 +24,7 @@ import (
 
 //eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6Im5hc3JvQGdtYWlsLmNvbSIsImV4cCI6MTc1MTEyMjYzNCwiaWQiOiJjYTIwNzY5Ni1mZmYzLTQ3YWItYjkxMS1mZGI2ZGYzZGNlMTYifQ.pBdqEbVneQ9EQgIqTSBmAWIbueqs4_7TLsKul-dP9ns
 
-func createJWT(worker *User) (string, error) {
+func createJWT(worker *jwtInupt) (string, error) {
 	if worker == nil {
 		return "", fmt.Errorf("worker is nil")
 	}

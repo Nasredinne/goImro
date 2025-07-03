@@ -3,6 +3,9 @@ docker run --name goImro -e POSTGRES_PASSWORD=goImro -e POSTGRES_USER=postgres -
 
 
 // CreateUser
+
+id = 93f2b994-9f03-4c0e-826a-b390e70cf271
+
 {
 
 "fullname" : "",
@@ -12,3 +15,19 @@ docker run --name goImro -e POSTGRES_PASSWORD=goImro -e POSTGRES_USER=postgres -
 "goldcard" : ""
 
 }
+
+
+// CreateEmployee
+id = 932adf98-0f18-40a0-98a7-98676243cff9
+{
+"fullname": "mustafa",
+"number": "0667761220",
+"email": "setta@gmail.com",
+"password": "Must@fa08",
+"goldcard": "1234567",
+"service": "Clearning"
+}
+
+
+
+

@@ -66,6 +66,36 @@ func (s *PostgresStore) CreateUser(email, password string) (string, error) {
 	return hashedPassword, nil
 }
 
+func (s *PostgresStore) CreateEmp(email, password string) (string, error) {
+	// Sanitize inputs
+	config := DefaultConfig
+	email = strings.TrimSpace(strings.ToLower(email))
+	password = strings.TrimSpace(password)
+
+	// Validate email format
+	if !isValidEmail(email) {
+		return "", ErrInvalidEmail
+	}
+
+	// Check if email already exists
+	if err := checkEmailEmployeeExists(s.db, email); err != nil {
+		return "", err
+	}
+
+	// Validate password
+	if err := validatePassword(password, config); err != nil {
+		return "", err
+	}
+
+	// Hash password
+	hashedPassword, err := hashPassword(password, config.BcryptCost)
+	if err != nil {
+		return "", fmt.Errorf("failed to hash password: %w", err)
+	}
+
+	return hashedPassword, nil
+}
+
 // isValidEmail checks email format using regex
 func isValidEmail(email string) bool {
 	// Basic email regex pattern
@@ -78,6 +108,18 @@ func isValidEmail(email string) bool {
 func checkEmailExists(db *sql.DB, email string) error {
 	var count int
 	err := db.QueryRow("SELECT COUNT(*) FROM users WHERE email = $1", email).Scan(&count)
+	if err != nil {
+		return ErrDatabaseError
+	}
+	if count > 0 {
+		return ErrEmailExists
+	}
+	return nil
+}
+
+func checkEmailEmployeeExists(db *sql.DB, email string) error {
+	var count int
+	err := db.QueryRow("SELECT COUNT(*) FROM employee WHERE email = $1", email).Scan(&count)
 	if err != nil {
 		return ErrDatabaseError
 	}
