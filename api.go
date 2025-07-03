@@ -281,7 +281,8 @@ func (s *APIServer) handleAutoriseBookService(w http.ResponseWriter, r *http.Req
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		return err
 	}
-	err := s.store.UpdatePrice(req)
+	err := s.store.AutoriseBookService(req)
+
 	if err != nil {
 		return WriteJSON(w, http.StatusResetContent, err)
 	}
@@ -293,7 +294,7 @@ func (s *APIServer) handleUpdatePrice(w http.ResponseWriter, r *http.Request) er
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		return err
 	}
-	err := s.store.AutoriseBookService(req)
+	err := s.store.UpdatePrice(req)
 	if err != nil {
 		return WriteJSON(w, http.StatusResetContent, err)
 	}
