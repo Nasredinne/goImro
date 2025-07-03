@@ -36,7 +36,9 @@ func (s *APIServer) Run() {
 	router.HandleFunc("/GetBookService", corsMiddleware(makeHTTPHandleFunc(s.handleGetBookService)))
 	router.HandleFunc("/GetBookServiceByEmployee", corsMiddleware(makeHTTPHandleFunc(s.handleGetBookServiceByEmployee)))
 	router.HandleFunc("/AutoriseBookService", corsMiddleware(makeHTTPHandleFunc(s.handleAutoriseBookService)))
-
+	router.HandleFunc("/UpdatePrice", corsMiddleware(makeHTTPHandleFunc(s.handleUpdatePrice)))
+	router.HandleFunc("/DeleteBooking", corsMiddleware(makeHTTPHandleFunc(s.handleDeleteBooking)))
+	router.HandleFunc("/DeleteEmployee", corsMiddleware(makeHTTPHandleFunc(s.handleDeleteEmployee)))
 	log.Println("JSON API server running on port: ", s.listenAddr)
 
 	http.ListenAndServe(s.listenAddr, router)
@@ -54,7 +56,7 @@ func corsMiddleware(next http.HandlerFunc) http.HandlerFunc {
 		// Allowed Origin
 		w.Header().Set("Access-Control-Allow-Origin", "*") // Change this to your frontend origin
 		// Allowed Methods
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, DELETE")
 		// Allowed Headers
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 
@@ -279,9 +281,53 @@ func (s *APIServer) handleAutoriseBookService(w http.ResponseWriter, r *http.Req
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		return err
 	}
+	err := s.store.UpdatePrice(req)
+	if err != nil {
+		return WriteJSON(w, http.StatusResetContent, err)
+	}
+	return WriteJSON(w, http.StatusAccepted, "Commend Updates Corectly")
+}
+
+func (s *APIServer) handleUpdatePrice(w http.ResponseWriter, r *http.Request) error {
+	req := new(BookService)
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		return err
+	}
 	err := s.store.AutoriseBookService(req)
 	if err != nil {
 		return WriteJSON(w, http.StatusResetContent, err)
 	}
 	return WriteJSON(w, http.StatusAccepted, "Commend Updates Corectly")
+}
+
+func (s *APIServer) handleDeleteBooking(w http.ResponseWriter, r *http.Request) error {
+	req := new(BookService)
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		return err
+	}
+	err := s.store.DeleteBooking(req)
+	if err != nil {
+		WriteJSON(w, http.StatusBadRequest, "Boocking Not Deleted")
+
+		return err
+
+	}
+	return WriteJSON(w, http.StatusAccepted, "Boocking Deleted")
+
+}
+
+func (s *APIServer) handleDeleteEmployee(w http.ResponseWriter, r *http.Request) error {
+	req := new(Employee)
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		return err
+	}
+	err := s.store.DeleteEmployee(req)
+	if err != nil {
+		WriteJSON(w, http.StatusBadRequest, "Boocking Not Deleted")
+
+		return err
+
+	}
+	return WriteJSON(w, http.StatusAccepted, "Boocking Deleted")
+
 }

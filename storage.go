@@ -26,6 +26,8 @@ type Storage interface {
 	GetBookServiceByEmployee(*ID) ([]*BookService, error)
 	AutoriseBookService(bookservice *BookService) error
 	UpdatePrice(bookservice *BookService) error
+	DeleteBooking(bookservice *BookService) error
+	DeleteEmployee(*Employee) error
 }
 
 type PostgresStore struct {
@@ -426,4 +428,40 @@ func scanIntoBookServices(rows *sql.Rows) (*BookService, error) {
 	)
 
 	return services, err
+}
+
+func (s *PostgresStore) DeleteBooking(bookservice *BookService) error {
+	result, err := s.db.Exec("DELETE FROM book_service WHERE id = $1", bookservice.Id)
+	if err != nil {
+		return fmt.Errorf("failed to execute delete: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to retrieve affected rows: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("no command found with ID %v", bookservice.Id)
+	}
+
+	return nil
+}
+
+func (s *PostgresStore) DeleteEmployee(employee *Employee) error {
+	result, err := s.db.Exec("DELETE FROM book_service WHERE id = $1", employee.ID)
+	if err != nil {
+		return fmt.Errorf("failed to execute delete: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to retrieve affected rows: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("no command found with ID %v", employee.ID)
+	}
+
+	return nil
 }
