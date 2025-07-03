@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"os"
 
 	_ "github.com/lib/pq"
 	"golang.org/x/crypto/bcrypt"
@@ -30,18 +31,18 @@ type PostgresStore struct {
 
 func NewPostgresStore() (*PostgresStore, error) {
 
-	connStr := "host=127.0.0.1 port=5432 user=postgres dbname=postgres password=goImro sslmode=disable"
-	db, err := sql.Open("postgres", connStr)
-	if err != nil {
-		return nil, err
-	}
+	// connStr := "host=127.0.0.1 port=5432 user=postgres dbname=postgres password=goImro sslmode=disable"
+	// db, err := sql.Open("postgres", connStr)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	// DO THIS BEFORE PUSH
-	// dsn := os.Getenv("DB_HOST")
-	// db, err := sql.Open("postgres", dsn)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
+	dsn := os.Getenv("DB_HOST")
+	db, err := sql.Open("postgres", dsn)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	err = db.Ping()
 	if err != nil {
