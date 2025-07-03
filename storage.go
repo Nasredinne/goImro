@@ -23,6 +23,9 @@ type Storage interface {
 	GetEmployeeByEmail(email string) (*Employee, error)
 	CreateBookSevice(*BookService) error
 	GetBookServices() ([]*BookService, error)
+	GetBookServiceByEmployee(*ID) ([]*BookService, error)
+	AutoriseBookService(bookservice *BookService) error
+	UpdatePrice(bookservice *BookService) error
 }
 
 type PostgresStore struct {
@@ -343,6 +346,69 @@ func (s *PostgresStore) GetBookServices() ([]*BookService, error) {
 	}
 
 	return BookServices, nil
+}
+
+func (s *PostgresStore) GetBookServiceByEmployee(req *ID) ([]*BookService, error) {
+	rows, err := s.db.Query("SELECT * FROM book_service WHERE employee_id = $1;", req.Id)
+	if err != nil {
+		return nil, err
+	}
+
+	BookServices := []*BookService{}
+	for rows.Next() {
+		bookservice, err := scanIntoBookServices(rows)
+		if err != nil {
+			return nil, err
+		}
+		BookServices = append(BookServices, bookservice)
+	}
+
+	return BookServices, nil
+}
+func (s *PostgresStore) AutoriseBookService(bookservice *BookService) error {
+
+	query := `
+		UPDATE book_service
+		SET is_authorized = $1
+		WHERE id = $2
+	`
+	result, err := s.db.Exec(query, bookservice.IsAuthorized, bookservice.Id)
+	if err != nil {
+		return fmt.Errorf("failed to execute update query: %w", err)
+	}
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to retrieve affected rows: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("no command found with ID %s", bookservice.Id)
+	}
+
+	return nil
+}
+
+func (s *PostgresStore) UpdatePrice(bookservice *BookService) error {
+
+	query := `
+		UPDATE book_service
+		SET price = $1
+		WHERE id = $2
+	`
+	result, err := s.db.Exec(query, bookservice.Price, bookservice.Id)
+	if err != nil {
+		return fmt.Errorf("failed to execute update query: %w", err)
+	}
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to retrieve affected rows: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("no command found with ID %s", bookservice.Id)
+	}
+
+	return nil
 }
 
 func scanIntoBookServices(rows *sql.Rows) (*BookService, error) {

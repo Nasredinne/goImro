@@ -29,5 +29,21 @@ id = 932adf98-0f18-40a0-98a7-98676243cff9
 }
 
 
+GetBookService 
+
+03e1a1d7-db51-4563-a2a1-26a35259db3e
+
+ {
+        "id": "03e1a1d7-db51-4563-a2a1-26a35259db3e",
+        "userid": "93f2b994-9f03-4c0e-826a-b390e70cf271",
+        "employeeId": "932adf98-0f18-40a0-98a7-98676243cff9",
+        "service": "clean",
+        "date": "10-10-2025",
+        "time": "10:00 AM",
+        "location": "bechar",
+        "isaothorized": "false",
+        "price": "5000"
+    }
+
 
 

@@ -31,9 +31,11 @@ func (s *APIServer) Run() {
 	router.HandleFunc("/GetUser", corsMiddleware(makeHTTPHandleFunc(s.handleGetUsers)))
 	router.HandleFunc("/GetEmployee", corsMiddleware(makeHTTPHandleFunc(s.handleGetEmployee)))
 	router.HandleFunc("/UserLogin", corsMiddleware(makeHTTPHandleFunc(s.handleUserRegestration)))
-	router.HandleFunc("/Employee", corsMiddleware(makeHTTPHandleFunc(s.handleEmployeeRegestration)))
+	router.HandleFunc("/EmployeeLogin", corsMiddleware(makeHTTPHandleFunc(s.handleEmployeeRegestration)))
 	router.HandleFunc("/CreateBookSevice", corsMiddleware(makeHTTPHandleFunc(s.handleCreateBookService)))
 	router.HandleFunc("/GetBookService", corsMiddleware(makeHTTPHandleFunc(s.handleGetBookService)))
+	router.HandleFunc("/GetBookServiceByEmployee", corsMiddleware(makeHTTPHandleFunc(s.handleGetBookServiceByEmployee)))
+	router.HandleFunc("/AutoriseBookService", corsMiddleware(makeHTTPHandleFunc(s.handleAutoriseBookService)))
 
 	log.Println("JSON API server running on port: ", s.listenAddr)
 
@@ -256,4 +258,30 @@ func makeHTTPHandleFunc(f apiFunc) http.HandlerFunc {
 			WriteJSON(w, http.StatusBadRequest, ApiError{Error: err.Error()})
 		}
 	}
+}
+
+func (s *APIServer) handleGetBookServiceByEmployee(w http.ResponseWriter, r *http.Request) error {
+	req := new(ID)
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		fmt.Println("ID : ", req.Id)
+		return err
+	}
+
+	bookservice, err := s.store.GetBookServiceByEmployee(req)
+	if err != nil {
+		return err
+	}
+	return WriteJSON(w, http.StatusAccepted, bookservice)
+}
+
+func (s *APIServer) handleAutoriseBookService(w http.ResponseWriter, r *http.Request) error {
+	req := new(BookService)
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		return err
+	}
+	err := s.store.AutoriseBookService(req)
+	if err != nil {
+		return WriteJSON(w, http.StatusResetContent, err)
+	}
+	return WriteJSON(w, http.StatusAccepted, "Commend Updates Corectly")
 }
